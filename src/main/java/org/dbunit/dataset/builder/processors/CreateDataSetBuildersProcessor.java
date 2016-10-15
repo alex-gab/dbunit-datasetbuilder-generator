@@ -33,8 +33,6 @@ public final class CreateDataSetBuildersProcessor extends AbstractProcessor {
     private Filer filer;
     private Messager messager;
 
-    private List<EntityClass> entityClasses = new ArrayList<>();
-
     @Override
     public final synchronized void init(ProcessingEnvironment processingEnv) {
         super.init(processingEnv);
@@ -63,7 +61,7 @@ public final class CreateDataSetBuildersProcessor extends AbstractProcessor {
             if (!elementsAnnotated.isEmpty()) {
                 checkThatOnlyClassesAreAnnotated(elementsAnnotated);
 
-                entityClasses = retrieveEntityClasses("schema.sql");
+                List<EntityClass> entityClasses = retrieveEntityClasses("schema.sql");
 
 
                 for (EntityClass entityClass : entityClasses) {
@@ -105,7 +103,7 @@ public final class CreateDataSetBuildersProcessor extends AbstractProcessor {
         return entityClasses;
     }
 
-    public static String[] readSql(String schema) throws IOException {
+    private static String[] readSql(String schema) throws IOException {
         final InputStream schemaStream = ClassLoader.getSystemResourceAsStream(schema);
         BufferedReader br = new BufferedReader(new InputStreamReader(schemaStream));
         String mysql = "";
