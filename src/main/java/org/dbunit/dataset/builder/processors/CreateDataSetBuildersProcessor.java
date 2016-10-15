@@ -14,7 +14,6 @@ import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
-import javax.tools.Diagnostic;
 import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -54,14 +53,13 @@ public final class CreateDataSetBuildersProcessor extends AbstractProcessor {
 
     @Override
     public final boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
-        messager.printMessage(Diagnostic.Kind.MANDATORY_WARNING,
-                "enter annotations!!!!" + annotations);
         try {
             final Set<? extends Element> elementsAnnotated = roundEnv.getElementsAnnotatedWith(ANNOTATION_CLASS);
             if (!elementsAnnotated.isEmpty()) {
                 checkThatOnlyClassesAreAnnotated(elementsAnnotated);
 
-                List<EntityClass> entityClasses = retrieveEntityClasses("schema.sql");
+                System.out.println("hehehe");
+                List<EntityClass> entityClasses = retrieveEntityClasses("/Users/alex-mac/IntelliJ/IntelliJ-Workspace/JdbcTutorial/src/test/resources/schema.sql");
 
 
                 for (EntityClass entityClass : entityClasses) {
@@ -69,20 +67,20 @@ public final class CreateDataSetBuildersProcessor extends AbstractProcessor {
                 }
                 entityClasses.clear();
             }
-        } catch (ProcessingException e) {
+        } catch (AnnotationProcessingException e) {
             messager.printMessage(ERROR,
                     e.getMessage(),
                     e.getElement());
-        } catch (IOException | SqlParsingException e) {
+        } catch (CreateDataSetBuildersException e) {
             messager.printMessage(ERROR, e.getMessage());
         }
         return true;
     }
 
-    private void checkThatOnlyClassesAreAnnotated(Set<? extends Element> elements) throws ProcessingException {
+    private void checkThatOnlyClassesAreAnnotated(Set<? extends Element> elements) throws AnnotationProcessingException {
         for (Element annotatedElement : elements) {
             if (annotatedElement.getKind() != ElementKind.CLASS) {
-                throw new ProcessingException(annotatedElement,
+                throw new AnnotationProcessingException(annotatedElement,
                         "Only classes can be annotated with @%s",
                         ANNOTATION_CLASS.getSimpleName());
             }
@@ -92,7 +90,7 @@ public final class CreateDataSetBuildersProcessor extends AbstractProcessor {
     private List<EntityClass> retrieveEntityClasses(String schemaFileName) throws SqlParsingException {
         List<EntityClass> entityClasses = new ArrayList<>();
         try {
-            String[] sqlStatements = readSql("schema.sql");
+            String[] sqlStatements = readSql(schemaFileName);
             for (String sqlStatement : sqlStatements) {
                 CreateTable statement = (CreateTable) CCJSqlParserUtil.parse(new StringReader(sqlStatement));
                 entityClasses.add(new EntityClass(statement));
@@ -103,8 +101,12 @@ public final class CreateDataSetBuildersProcessor extends AbstractProcessor {
         return entityClasses;
     }
 
-    private static String[] readSql(String schema) throws IOException {
-        final InputStream schemaStream = ClassLoader.getSystemResourceAsStream(schema);
+    private String[] readSql(String schema) throws IOException {
+        System.out.println("schema file name is " + schema);
+        final InputStream schemaStream = new FileInputStream(schema);
+        System.out.println("schema stream is " + schemaStream);
+//        messager.printMessage(Diagnostic.Kind.MANDATORY_WARNING,
+//                "stream is " + schemaStream);
         BufferedReader br = new BufferedReader(new InputStreamReader(schemaStream));
         String mysql = "";
         String line;

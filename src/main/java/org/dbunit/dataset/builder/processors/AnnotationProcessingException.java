@@ -2,10 +2,10 @@ package org.dbunit.dataset.builder.processors;
 
 import javax.lang.model.element.Element;
 
-public final class ProcessingException extends Exception {
+public final class AnnotationProcessingException extends CreateDataSetBuildersException {
     private final Element element;
 
-    public ProcessingException(Element element, String msg, Object... args) {
+    public AnnotationProcessingException(Element element, String msg, Object... args) {
         super(String.format(msg, args));
         this.element = element;
     }
