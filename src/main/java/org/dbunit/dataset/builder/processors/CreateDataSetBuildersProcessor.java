@@ -58,7 +58,6 @@ public final class CreateDataSetBuildersProcessor extends AbstractProcessor {
             if (!elementsAnnotated.isEmpty()) {
                 checkThatOnlyClassesAreAnnotated(elementsAnnotated);
 
-                System.out.println("hehehe");
                 List<EntityClass> entityClasses = retrieveEntityClasses("/Users/alex-mac/IntelliJ/IntelliJ-Workspace/JdbcTutorial/src/test/resources/schema.sql");
 
 
@@ -105,8 +104,6 @@ public final class CreateDataSetBuildersProcessor extends AbstractProcessor {
         System.out.println("schema file name is " + schema);
         final InputStream schemaStream = new FileInputStream(schema);
         System.out.println("schema stream is " + schemaStream);
-//        messager.printMessage(Diagnostic.Kind.MANDATORY_WARNING,
-//                "stream is " + schemaStream);
         BufferedReader br = new BufferedReader(new InputStreamReader(schemaStream));
         String mysql = "";
         String line;

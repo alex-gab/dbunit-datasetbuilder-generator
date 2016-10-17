@@ -3,15 +3,11 @@ package org.dbunit.dataset.builder;
 import org.dbunit.dataset.DataSetException;
 import org.dbunit.dataset.IDataSet;
 
-public final class SchemaDataSetBuilder implements ISchemaDataSetBuilder {
+public abstract class AbstractSchemaDataSetBuilder implements ISchemaDataSetBuilder {
     private final DataSetBuilder dataSetBuilder;
 
-    private SchemaDataSetBuilder() throws DataSetException {
-        this.dataSetBuilder = new DataSetBuilder();
-    }
-
-    public final EmpClerkSchemaDataRowBuilder newEmpClerkRow() {
-        return new EmpClerkSchemaDataRowBuilder(this, "EMP_CLERK");
+    AbstractSchemaDataSetBuilder(final DataSetBuilder dataSetBuilder) {
+        this.dataSetBuilder = dataSetBuilder;
     }
 
     @Override

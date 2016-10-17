@@ -4,6 +4,8 @@ import com.squareup.javapoet.*;
 import net.sf.jsqlparser.statement.create.table.ColumnDefinition;
 import net.sf.jsqlparser.statement.create.table.CreateTable;
 import org.dbunit.dataset.DataSetException;
+import org.dbunit.dataset.builder.AbstractSchemaDataRowBuilder;
+import org.dbunit.dataset.builder.AbstractSchemaDataSetBuilder;
 import org.dbunit.dataset.builder.ColumnSpec;
 import org.dbunit.dataset.builder.DataSetBuilder;
 
@@ -15,7 +17,7 @@ import java.io.IOException;
 import static javax.lang.model.element.Modifier.*;
 
 public final class EntityClass {
-    public static final String BUILDER_CLASS_PREFIX = "DataSetBuilder";
+    public static final String BUILDER_CLASS_PREFIX = "SchemaDataRowBuilder";
 
     private final CreateTable statement;
 
@@ -26,37 +28,63 @@ public final class EntityClass {
     public final void generateCode(Elements elementUtils, Filer filer, Messager messager) throws CreateDataSetBuildersException {
         try {
             final String tableName = statement.getTable().getName();
-            final String className = tableName + BUILDER_CLASS_PREFIX;
-            final String packageName = "com.other";
-            final ClassName returnType = ClassName.get(packageName, className);
+            final String rowBuilderClassName = tableName + BUILDER_CLASS_PREFIX;
+            final String packageName = "org.dbunit.dataset.builder";
+            final ClassName rowBuilderClass = ClassName.get(packageName, rowBuilderClassName);
 
-            try {
-                DataSetBuilder builder = new DataSetBuilder();
-                builder.newRow("PERSON").with("NAME", "Bob").with("AGE", 18).add();
-//                builder.add(new BasicDataRowBuilder());
-            } catch (DataSetException e) {
-                e.printStackTrace();
-            }
-
-            final TypeSpec.Builder typeSpecBuilder = TypeSpec.
-                    classBuilder(className).
+            final TypeSpec.Builder dataSetBuilder = TypeSpec.classBuilder("SchemaDataSetBuilder").
                     addModifiers(PUBLIC, FINAL).
-                    addField(DataSetBuilder.class, "underlyingBuilder", PRIVATE, FINAL).
+                    superclass(AbstractSchemaDataSetBuilder.class).
                     addMethod(
                             MethodSpec.constructorBuilder().
-                                    addModifiers(PRIVATE).
-                                    addParameter(DataSetBuilder.class, "underlyingBuilder", FINAL).
-                                    addStatement("this.$L = $L", "underlyingBuilder", "underlyingBuilder").
+                                    addModifiers(PUBLIC).
+                                    addException(DataSetException.class).
+                                    addStatement("super(new $T())", DataSetBuilder.class).
                                     build()
                     ).
                     addMethod(
-                            MethodSpec.methodBuilder("a" + tableName + "DataSet").
-                                    addModifiers(PUBLIC, STATIC).
-                                    addException(DataSetException.class).
-                                    returns(returnType).
-                                    addStatement("return new $L(new $T())", className, DataSetBuilder.class).
+                            MethodSpec.methodBuilder("new" + tableName + "Row").
+                                    addModifiers(PUBLIC, FINAL).
+                                    returns(rowBuilderClass).
+                                    addStatement("return new $T($L, $S)", rowBuilderClass, "this", tableName).
                                     build()
                     );
+
+            final ClassName schemaDataSetBuilderClassName = ClassName.get(packageName, "SchemaDataSetBuilder");
+            ParameterizedTypeName superclass =
+                    ParameterizedTypeName.get(
+                            ClassName.get(AbstractSchemaDataRowBuilder.class),
+                            schemaDataSetBuilderClassName);
+            final TypeSpec.Builder dataRowBuilder = TypeSpec.classBuilder(rowBuilderClassName).
+                    addModifiers(PUBLIC, FINAL).
+                    superclass(superclass).
+                    addMethod(
+                            MethodSpec.constructorBuilder().
+                                    addParameter(schemaDataSetBuilderClassName, "schemaDataSetBuilder", FINAL).
+                                    addParameter(String.class, "tableName", FINAL).
+                                    addStatement("super($L, $L)", "schemaDataSetBuilder", "tableName").
+                                    build()
+                    );
+
+
+//            final TypeSpec.Builder typeSpecBuilder = TypeSpec.classBuilder(className).
+//                    addModifiers(PUBLIC, FINAL).
+//                    addField(DataSetBuilder.class, "underlyingBuilder", PRIVATE, FINAL).
+//                    addMethod(
+//                            MethodSpec.constructorBuilder().
+//                                    addModifiers(PRIVATE).
+//                                    addParameter(DataSetBuilder.class, "underlyingBuilder", FINAL).
+//                                    addStatement("this.$L = $L", "underlyingBuilder", "underlyingBuilder").
+//                                    build()
+//                    ).
+//                    addMethod(
+//                            MethodSpec.methodBuilder("a" + tableName + "DataSet").
+//                                    addModifiers(PUBLIC, STATIC).
+//                                    addException(DataSetException.class).
+//                                    returns(returnType).
+//                                    addStatement("return new $L(new $T())", className, DataSetBuilder.class).
+//                                    build()
+//                    );
 
             for (ColumnDefinition columnDefinition : statement.getColumnDefinitions()) {
                 final String dataType = columnDefinition.getColDataType().getDataType();
@@ -65,26 +93,25 @@ public final class EntityClass {
 
                 TypeName columnSpec = ParameterizedTypeName.get(ColumnSpec.class, clazz);
 
-                typeSpecBuilder.
-                        addField(
-                                FieldSpec.builder(columnSpec, name, PRIVATE).
-                                        initializer("ColumnSpec.newColumn($S)", name).
-                                        build()
-                        ).
+                final FieldSpec field = FieldSpec.builder(columnSpec, name, PRIVATE, STATIC, FINAL).
+                        initializer("ColumnSpec.newColumn($S)", name).
+                        build();
+                dataRowBuilder.
+                        addField(field).
                         addMethod(
                                 MethodSpec.methodBuilder(name).
                                         addModifiers(PUBLIC, FINAL).
-                                        returns(returnType).
+                                        returns(rowBuilderClass).
                                         addParameter(clazz, name, FINAL).
-                                        addStatement("this.$L = $L", name, name).
+                                        addStatement("$L.with($L.$N, $L)", "dataRowBuilder", rowBuilderClassName, field, name).
                                         addStatement("return this").
                                         build()
                         );
             }
 
-
-            final TypeSpec typeSpec = typeSpecBuilder.build();
-            JavaFile.builder(packageName, typeSpec).build().writeTo(filer);
+            JavaFile.builder(packageName, dataSetBuilder.build()).build().writeTo(filer);
+            JavaFile.builder(packageName, dataRowBuilder.build()).build().writeTo(filer);
+            System.out.println("generated builders");
         } catch (IOException e) {
             throw new CreateDataSetBuildersException("Code generation exception: ", e);
         }
